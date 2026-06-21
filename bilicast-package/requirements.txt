@@ -1,0 +1,5 @@
+﻿reportlab>=4.0
+
+# Optional: for local ASR on videos without subtitles
+yt-dlp>=2024.8.6
+faster-whisper>=1.0.0

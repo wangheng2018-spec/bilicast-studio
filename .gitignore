@@ -1,0 +1,8 @@
+﻿__pycache__/
+*.pyc
+models/
+assets/
+*.jpg
+*.png
+*.svg
+*.onnx

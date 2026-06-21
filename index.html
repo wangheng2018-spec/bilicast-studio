@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="提交 Bilibili 视频链接，站内观看视频，并生成按时间段整理的视频播客式 PDF 笔记。"
+    />
+    <title>BiliCast Studio | Python B站视频内容识别与PDF笔记</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#workspace" aria-label="BiliCast Studio">
+        <span class="brand-mark">BC</span>
+        <span>
+          <strong>BiliCast Studio</strong>
+          <small>Video to podcast notes</small>
+        </span>
+      </a>
+
+      <nav class="topnav" aria-label="页面导航">
+        <a href="#workspace">工作台</a>
+        <a href="#report">分析报告</a>
+        <a href="#integration">接口</a>
+      </nav>
+    </header>
+
+    <main id="workspace" class="app-shell">
+      <section class="control-panel" aria-labelledby="submit-title">
+        <div class="panel-head">
+          <p class="eyebrow">Bilibili Analyzer</p>
+          <h1 id="submit-title">把 B 站视频整理成可导出的时间轴笔记</h1>
+        </div>
+
+        <form id="video-form" class="video-form">
+          <label>
+            <span>BILIBILI 视频链接</span>
+            <input
+              id="video-url"
+              name="videoUrl"
+              type="url"
+              inputmode="url"
+              autocomplete="url"
+              placeholder="https://www.bilibili.com/video/BV..."
+              required
+            />
+          </label>
+
+          <div class="field-row">
+            <label>
+              <span>分析来源</span>
+              <select id="analysis-mode" name="analysisMode">
+                <option value="subtitle">读取 B 站字幕</option>
+                <option value="asr">本地 ASR 识别</option>
+                <option value="demo">本地演示</option>
+              </select>
+            </label>
+            <label>
+              <span>接口地址</span>
+              <input
+                id="api-endpoint"
+                name="apiEndpoint"
+                type="text"
+                placeholder="/api/analyze"
+                value="/api/analyze"
+                readonly
+              />
+            </label>
+          </div>
+
+          <label>
+            <span>报告标题</span>
+            <input id="report-title-input" name="reportTitle" type="text" placeholder="自动使用视频编号" />
+          </label>
+
+          <div class="button-row">
+            <button class="primary-button" type="submit">开始分析</button>
+            <button class="ghost-button" id="reset-button" type="button">清空</button>
+          </div>
+        </form>
+
+        <div class="status-card" aria-live="polite">
+          <div>
+            <span class="status-label">当前状态</span>
+            <strong id="status-text">等待提交视频链接</strong>
+          </div>
+          <div class="progress-track" aria-hidden="true">
+            <span id="progress-bar"></span>
+          </div>
+        </div>
+
+        <div class="pipeline">
+          <article class="pipeline-step is-active" data-step="parse">
+            <span>01</span>
+            <strong>解析链接</strong>
+          </article>
+          <article class="pipeline-step" data-step="watch">
+            <span>02</span>
+            <strong>站内播放</strong>
+          </article>
+          <article class="pipeline-step" data-step="analyze">
+            <span>03</span>
+            <strong>内容识别</strong>
+          </article>
+          <article class="pipeline-step" data-step="export">
+            <span>04</span>
+            <strong>导出 PDF</strong>
+          </article>
+        </div>
+      </section>
+
+      <section class="viewer-panel" aria-labelledby="viewer-title">
+        <div class="viewer-head">
+          <div>
+            <p class="eyebrow">Embedded Player</p>
+            <h2 id="viewer-title">站内观看</h2>
+          </div>
+          <a id="open-bilibili" class="text-button" href="#" target="_blank" rel="noreferrer" aria-disabled="true">
+            打开原视频
+          </a>
+        </div>
+
+        <div class="video-frame" id="video-frame">
+          <div class="empty-player">
+            <span class="play-mark">▶</span>
+            <strong>提交 BV 或 av 链接后显示播放器</strong>
+          </div>
+        </div>
+
+        <div class="video-meta-grid">
+          <article>
+            <span>视频编号</span>
+            <strong id="meta-video-id">-</strong>
+          </article>
+          <article>
+            <span>分 P</span>
+            <strong id="meta-page">-</strong>
+          </article>
+          <article>
+            <span>报告段落</span>
+            <strong id="meta-segments">0</strong>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <section id="report" class="report-section">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Podcast Style PDF</p>
+          <h2>时间轴报告</h2>
+        </div>
+        <div class="report-actions">
+          <button id="copy-report-button" class="ghost-button" type="button">复制 Markdown</button>
+          <button id="print-button" class="primary-button" type="button">下载 PDF</button>
+        </div>
+      </div>
+
+      <div class="report-layout">
+        <aside class="summary-panel">
+          <span class="report-badge" id="source-badge">未生成</span>
+          <h3 id="report-title">等待分析</h3>
+          <p id="report-summary">报告生成后会在这里显示视频主题摘要。</p>
+
+          <div class="keyword-list" id="keyword-list" aria-label="关键词"></div>
+        </aside>
+
+        <div class="timeline-panel">
+          <div id="timeline-list" class="timeline-list">
+            <article class="timeline-empty">
+              <span>00:00</span>
+              <div>
+                <strong>还没有时间轴内容</strong>
+                <p>提交视频链接后会生成按时间段整理的讲解内容。</p>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="integration" class="integration-section">
+      <div class="integration-copy">
+        <p class="eyebrow">Backend Contract</p>
+        <h2>真实识别接口</h2>
+        <p>
+          Python 后端会把视频链接解析成 BV/av 编号，优先读取 Bilibili 公开字幕或 AI 字幕生成时间轴。没有字幕的视频可以安装 yt-dlp、faster-whisper 和 ffmpeg 后启用本地 ASR。
+        </p>
+      </div>
+      <pre class="contract-box"><code>{
+  "title": "视频标题",
+  "duration": "18:42",
+  "summary": "三到五句话的整体摘要",
+  "keywords": ["关键词", "章节", "主题"],
+  "segments": [
+    {
+      "start": "00:00",
+      "end": "02:15",
+      "title": "开场与问题定义",
+      "summary": "这一段讲了什么",
+      "highlights": ["要点一", "要点二"]
+    }
+  ]
+}</code></pre>
+    </section>
+
+    <footer class="site-footer">
+      <strong>BiliCast Studio</strong>
+      <span>静态前端 + 可接入 ASR 后端的 B 站视频笔记生成器</span>
+    </footer>
+
+    <section id="print-report" class="print-report" aria-hidden="true">
+      <h1 id="print-title">BiliCast Studio Report</h1>
+      <p id="print-summary"></p>
+      <div id="print-keywords"></div>
+      <div id="print-timeline"></div>
+    </section>
+
+    <script src="app.js"></script>
+  </body>
+</html>
