@@ -6,3 +6,6 @@ assets/
 *.png
 *.svg
 *.onnx
+
+ip-chain/
+ip-chain.zip
